@@ -1,4 +1,4 @@
-# Logs
+# --- 日誌檔案 (Logs) ---
 logs
 *.log
 npm-debug.log*
@@ -7,18 +7,32 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# --- 專案依賴與建置產出 (Dependencies & Build) ---
+node_modules/
+dist/
+dist-ssr/
 *.local
 
-# Editor directories and files
+# --- 環境變數檔案 (Environment Variables - 極重要) ---
+# 排除所有環境變數檔案，避免金鑰流出
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# --- 編輯器與系統暫存 (Editor & OS files) ---
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# --- Vite / Vue 專案特有暫存 ---
+.vite/
+.vue-devtools/
