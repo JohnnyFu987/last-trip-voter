@@ -4,6 +4,8 @@ import VueDevTools from 'vite-plugin-vue-devtools'; // 1. 正確引入 VueDevToo
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  // 加入 base 設定，對應你 GitHub 儲存庫的名稱
+  base: '/last-trip-voter/', 
   plugins: [
     vue(),
     tailwindcss(),
