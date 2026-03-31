@@ -34,35 +34,76 @@ const fetchAIRecommendation = async () => {
     isLoading.value = true;
     aiContent.value = "";
     
-    // 組合當前統計資料
-    const destData = store.destinations.map(d => `${d.name}(${d.votes.length}票)`).join(', ');
-    const userQuery = `目前最新數據：目的地：${destData}。有空日期統計：${Object.entries(store.dates).filter(x=>x[1].length>0).length} 天有交集。`;
+    // 1. 目的地統計：列出所有有得票的目的地與票數
+    const destData = store.destinations
+        .filter(d => d.votes.length > 0)
+        .map(d => `${d.name}(${d.votes.length}票)`)
+        .join('、') || '尚未投票';
+        
+    // 2. 日期共識：計算有交集的天數
+    const intersectedDays = Object.entries(store.dates).filter(x => x[1].length > 0).length;
     
+    // 3. 預算統計：找出各預算區間的票數
+    const budgetData = Object.entries(store.budgets)
+        .filter(([range, voters]) => voters.length > 0)
+        .map(([range, voters]) => `${range}(${voters.length}票)`)
+        .join('、') || '無特定預算';
+        
+    // 4. 重視因素統計：找出有被投票的因素與票數
+    const prioritiesData = store.factors
+        .filter(f => f.votes.length > 0)
+        .map(f => `${f.name}(${f.votes.length}票)`)
+        .join('、') || '無特別要求';
+
+    // 組合最終提示詞
+    const fullPrompt = `你是一位熱情活潑的畢業旅行領隊。請根據提供的最新統計數據，給予學生們一段熱情且具建設性的推薦建議。
+
+最新數據：
+- 目的地票選：${destData}
+- 預算範圍統計：${budgetData}
+- 同學重視因素：${prioritiesData}
+- 日期共識：目前有 ${intersectedDays} 天是大家都有空的黃金時段！
+
+要求：
+1. 必須針對「預算」與「重視因素」給予具體的行程方向建議（例如省錢玩法、或是該注重吃還是買）。
+2. 字數請控制在 150 字以內。
+3. 語氣要像學長姊一樣專業又帶動氣氛，請加上一些 Emoji ⚡️🎉 帶動期待感。`;
+
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_CONFIG.GEMINI_API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_CONFIG.GEMINI_API_KEY}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ 
-                contents: [{ parts: [{ text: userQuery }] }], 
-                systemInstruction: { parts: [{ text: "你是一位熱情活潑的畢業旅行領隊。請根據提供的數據，給予學生們一段簡短(150字內)、熱情的推薦建議。" }] } 
+                contents: [{ 
+                    parts: [{ text: fullPrompt }] 
+                }]
             })
         });
+
         const result = await response.json();
+        
+        if (result.error) {
+            console.error("API 錯誤詳情:", result.error);
+            throw new Error(result.error.message);
+        }
+
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
         
         if (text) {
             aiContent.value = `<div class="bg-blue-50/60 p-4 md:p-5 rounded-xl border border-blue-100 text-blue-900">${text.replace(/\n/g, '<br>')}</div>`;
         } else {
-            throw new Error("API 無回傳");
+            throw new Error("API 回傳格式異常");
         }
     } catch (error) {
-        aiContent.value = "AI 領隊目前沒錢買Token...";
+        console.error("Fetch 失敗:", error);
+        aiContent.value = "AI 領隊目前連線異常，請稍後再試！";
     } finally {
         isLoading.value = false;
     }
 };
 
-// 監聽 NavBar 傳來的事件
 onMounted(() => window.addEventListener('open-ai-section', fetchAIRecommendation));
 onUnmounted(() => window.removeEventListener('open-ai-section', fetchAIRecommendation));
 </script>
