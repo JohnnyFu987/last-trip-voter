@@ -1,7 +1,9 @@
 <template>
   <section class="card-panel p-5 md:p-8">
     <h3 class="text-base md:text-lg font-black mb-4 md:mb-6 text-slate-800 border-l-4 border-slate-800 pl-3">旅行有空日期熱度圖</h3>
-    <p class="text-[11px] md:text-xs text-slate-500 mb-4 font-bold">顏色越深代表越多夥伴有空，<span class="text-blue-600">點選</span>日期可看名單。</p>
+    <p class="text-[11px] md:text-xs text-slate-500 mb-4 font-bold">
+        顏色越深代表越多夥伴有空，<span class="text-blue-600">點選深色日期</span>即可查看名單。
+    </p>
     
     <div class="flex items-center justify-between mb-3 md:mb-4 px-1">
         <button @click="changeMonth(-1)" class="flex items-center gap-1 text-[11px] md:text-sm font-bold text-slate-500 hover:text-slate-800 transition bg-white p-1.5 md:p-2 rounded-lg shadow-sm">
@@ -20,17 +22,17 @@
             </div>
             <div class="grid grid-cols-7 gap-1">
                 <div v-for="n in monthData.firstDay" :key="'blank-'+n"></div>
+                
                 <div v-for="day in monthData.days" :key="day.dateStr" 
-                     @click="showVoterList(day)"
-                     class="relative aspect-square flex items-center justify-center rounded-lg md:rounded-xl text-xs md:text-sm font-bold transition-all box-border group cursor-pointer active:scale-95"
+                     @click="handleDayClick(day)"
+                     class="relative aspect-square flex flex-col items-center justify-center rounded-lg md:rounded-xl text-xs md:text-sm font-bold transition-all box-border group active:scale-95"
+                     :class="[day.voters.length > 0 ? 'cursor-pointer hover:ring-2 hover:ring-slate-400' : 'cursor-default']"
                      :style="getHeatmapStyle(day.voters)">
-                    {{ day.dayNum }}
                     
-                    <div v-if="day.voters.length > 0" class="absolute bottom-[110%] left-1/2 -translate-x-1/2 mb-1 hidden lg:group-hover:flex flex-col items-center z-50 pointer-events-none w-max">
-                        <div class="bg-slate-800 text-white text-[11px] md:text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-xl">
-                            {{ day.voters.length }} 人有空
-                        </div>
-                        <div class="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+                    <span>{{ day.dayNum }}</span>
+                    
+                    <div v-if="day.voters.length > 0" class="w-1 h-1 rounded-full mt-0.5" 
+                         :class="day.voters.length > (store.totalVoters / 2) ? 'bg-white/60' : 'bg-slate-400'">
                     </div>
                 </div>
             </div>
@@ -41,10 +43,27 @@
 
 <script setup>
 import { computed } from 'vue';
-import { store, uiState } from '../store'; // 引入 uiState 以控制 Modal
+import { store, uiState } from '../store';
 
-const changeMonth = (delta) => { 
-    // 簡單的跨年/跨月邏輯處理
+/**
+ * 核心修正：對接 store.js 中的變數名稱
+ * 使用 uiState.modalData 與 uiState.isModalOpen
+ */
+const handleDayClick = (day) => {
+    // 檢查是否有投票者
+    if (!day.voters || day.voters.length === 0) return;
+
+    // 關鍵修正：屬性名稱必須對應 VoterModal.vue 裡的 name 與 votes
+    uiState.modalData = {
+        name: `${day.dateStr} 有空的夥伴`, // 對應 VoterModal 的 name
+        votes: day.voters,               // 對應 VoterModal 的 votes (陣列)
+        color: '#2d3e30'                 // 彈窗上方顏色
+    };
+    
+    uiState.isModalOpen = true; 
+};
+
+const changeMonth = (delta) => {
     let newMonth = store.currentCalMonth + delta;
     if (newMonth > 11) {
         store.currentCalYear++;
@@ -55,16 +74,6 @@ const changeMonth = (delta) => {
     } else {
         store.currentCalMonth = newMonth;
     }
-};
-
-// 修改處：點擊顯示名單的邏輯
-const showVoterList = (day) => {
-    if (day.voters.length === 0) return;
-    
-    // 設定 Modal 顯示的標題與名單內容
-    uiState.modalTitle = `${day.dateStr} 有空的夥伴`;
-    uiState.modalList = day.voters;
-    uiState.showModal = true;
 };
 
 const generateMonthData = (year, monthIndex) => {
@@ -79,7 +88,11 @@ const generateMonthData = (year, monthIndex) => {
     const days = Array.from({ length: daysInMonth }, (_, i) => {
         const d = i + 1;
         const dateStr = `${y}-${String(m+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        return { dayNum: d, dateStr, voters: store.dates[dateStr] || [] };
+        return { 
+            dayNum: d, 
+            dateStr, 
+            voters: store.dates[dateStr] || [] 
+        };
     });
 
     return { key: `${y}-${m}`, year: y, monthName: monthNames[m], firstDay, days };
@@ -96,9 +109,9 @@ const getHeatmapStyle = (voters) => {
         return {
             backgroundColor: `rgba(45, 62, 48, ${intensity})`,
             color: intensity > 0.4 ? 'white' : '#2d3e30',
-            border: `1px solid rgba(45,62,48, ${intensity})`,
+            border: `1px solid rgba(45,62,48, 0.1)`,
         };
     }
-    return { backgroundColor: '#f8fafc', color: '#94a3b8', cursor: 'default' };
+    return { backgroundColor: '#f8fafc', color: '#94a3b8' };
 };
 </script>
