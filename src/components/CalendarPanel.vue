@@ -21,12 +21,14 @@
             <div class="grid grid-cols-7 gap-1">
                 <div v-for="n in monthData.firstDay" :key="'blank-'+n"></div>
                 <div v-for="day in monthData.days" :key="day.dateStr" 
-                     class="relative aspect-square flex items-center justify-center rounded-lg md:rounded-xl text-xs md:text-sm font-bold transition-all box-border group"
+                     @click="showVoterList(day)"
+                     class="relative aspect-square flex items-center justify-center rounded-lg md:rounded-xl text-xs md:text-sm font-bold transition-all box-border group cursor-pointer active:scale-95"
                      :style="getHeatmapStyle(day.voters)">
                     {{ day.dayNum }}
-                    <div v-if="day.voters.length > 0" class="absolute bottom-[110%] left-1/2 -translate-x-1/2 mb-1 hidden group-hover:flex flex-col items-center z-50 pointer-events-none w-max">
+                    
+                    <div v-if="day.voters.length > 0" class="absolute bottom-[110%] left-1/2 -translate-x-1/2 mb-1 hidden lg:group-hover:flex flex-col items-center z-50 pointer-events-none w-max">
                         <div class="bg-slate-800 text-white text-[11px] md:text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-xl">
-                            {{ day.voters.join(', ') }} 
+                            {{ day.voters.length }} 人有空
                         </div>
                         <div class="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
                     </div>
@@ -39,9 +41,31 @@
 
 <script setup>
 import { computed } from 'vue';
-import { store } from '../store';
+import { store, uiState } from '../store'; // 引入 uiState 以控制 Modal
 
-const changeMonth = (delta) => { store.currentCalMonth += delta; };
+const changeMonth = (delta) => { 
+    // 簡單的跨年/跨月邏輯處理
+    let newMonth = store.currentCalMonth + delta;
+    if (newMonth > 11) {
+        store.currentCalYear++;
+        store.currentCalMonth = 0;
+    } else if (newMonth < 0) {
+        store.currentCalYear--;
+        store.currentCalMonth = 11;
+    } else {
+        store.currentCalMonth = newMonth;
+    }
+};
+
+// 修改處：點擊顯示名單的邏輯
+const showVoterList = (day) => {
+    if (day.voters.length === 0) return;
+    
+    // 設定 Modal 顯示的標題與名單內容
+    uiState.modalTitle = `${day.dateStr} 有空的夥伴`;
+    uiState.modalList = day.voters;
+    uiState.showModal = true;
+};
 
 const generateMonthData = (year, monthIndex) => {
     let y = year, m = monthIndex;
@@ -73,9 +97,8 @@ const getHeatmapStyle = (voters) => {
             backgroundColor: `rgba(45, 62, 48, ${intensity})`,
             color: intensity > 0.4 ? 'white' : '#2d3e30',
             border: `1px solid rgba(45,62,48, ${intensity})`,
-            cursor: 'pointer'
         };
     }
-    return { backgroundColor: '#f8fafc', color: '#94a3b8' };
+    return { backgroundColor: '#f8fafc', color: '#94a3b8', cursor: 'default' };
 };
 </script>
