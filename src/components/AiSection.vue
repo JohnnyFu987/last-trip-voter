@@ -98,7 +98,7 @@ const fetchAIRecommendation = async () => {
         }
     } catch (error) {
         console.error("Fetch 失敗:", error);
-        aiContent.value = "AI 領隊目前連線異常，請稍後再試！";
+        aiContent.value = "AI 沒錢買Token...";
     } finally {
         isLoading.value = false;
     }
